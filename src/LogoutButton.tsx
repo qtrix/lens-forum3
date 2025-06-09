@@ -1,12 +1,7 @@
 import { useLogout } from '@lens-protocol/react';
 import { useDisconnect } from 'wagmi';
 import { useState } from 'react';
-import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid';
-
-interface LogoutButtonProps {
-  className?: string;
-}
-export function LogoutButton({ className = '' }: LogoutButtonProps) {
+export function LogoutButton() {
   const { execute } = useLogout();
   const { disconnectAsync } = useDisconnect();
   const [loading, setLoading] = useState(false);

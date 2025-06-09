@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   useAccount,
-  useConnect,
   useDisconnect,
   useWalletClient,
 } from 'wagmi';
@@ -53,30 +52,28 @@ export function LoginWith({ signer, value }: { signer: EvmAddress; value: Accoun
           },
         };
 
-        return (
-          <button
-            type='button'
-            onClick={() => {
-              execute({
-                ...loginAs,
-                signMessage: signMessageWith(data!),
-              });
-            }}
-          >
-            {value.account.username?.value ?? value.account.address}
-          </button>
-        );
-  
+  return (
+    <button
+      type='button'
+      onClick={() => {
+        execute({
+          ...loginAs,
+          signMessage: signMessageWith(data!),
+        });
+      }}
+    >
+      {value.account.username?.value ?? value.account.address}
+    </button>
+  );
 }
 
 export function LoginOptions({ address }: { address: string }) {
   const { data: availableAccounts, loading } = useAccountsAvailable({
     managedBy: evmAddress(address),
-    suspense: false,
   });
 
   const [open, setOpen] = useState(false);
-  const hasAccounts = availableAccounts?.items?.length > 0;
+  const hasAccounts = !!availableAccounts?.items && availableAccounts.items.length > 0;
 
   if (loading) return <p>Loading profiles...</p>;
 
@@ -134,7 +131,7 @@ function CreateAccountFlow({ address }: { address: string }) {
         .login({
           onboardingUser: {
             wallet: walletClient.account.address,
-            app: '0xA0B0592Fe935Ee8FbC4E105d7C6b523d2e6D0e6a', // <-- Replace with your app contract address if needed
+            app: '0xA0B0592Fe935Ee8FbC4E105d7C6b523d2e6D0e6a', // Replace with your app contract address if needed
           },
           signMessage: async (message) =>
             walletClient.signMessage({ message }),
@@ -175,12 +172,12 @@ function CreateAccountFlow({ address }: { address: string }) {
           }
         );
 
-      alert(`Account created! Username: ${created.username.value}`);
+      alert(`Account created! Username: ${created?.username?.value}`);
 
       // Automatically login after account creation
       execute({
         accountOwner: {
-          account: created.address,
+          account: created?.address,
           owner: evmAddress(address),
         },
         signMessage: signMessageWith(walletClient),
@@ -256,4 +253,3 @@ export function LoginForm() {
     </div>
   );
 }
-

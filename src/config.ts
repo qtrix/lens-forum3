@@ -12,6 +12,5 @@ export const config = createConfig(
     appName: 'Lens + ConnectKit Example',
     appDescription: 'A sample app integrating ConnectKit and Lens React SDK.',
     appUrl: `${import.meta.env.BASE_URL}`,
-    appIcon: `${import.meta.env.BASE_URL}/lens.svg`,
   }),
 );

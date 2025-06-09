@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAuthenticatedUser, useAccount, useCreatePost } from "@lens-protocol/react";
 import { LoginForm } from "./LoginForm";
 import { LogoutButton } from "./LogoutButton";
@@ -6,24 +6,25 @@ import { textOnly } from '@lens-protocol/metadata';
 import { handleOperationWith } from "@lens-protocol/react/viem";
 import { useWalletClient } from "wagmi";
 import { fetchPostsForYou } from "@lens-protocol/client/actions";
-import { evmAddress } from "@lens-protocol/client";
+import { evmAddress, type PostForYou } from "@lens-protocol/client";
 import { client } from "./client";
+
 export function App() {
   const { data: authUser } = useAuthenticatedUser({ suspense: true });
   const { data: walletClient } = useWalletClient();
-  const [loadingPosts, setLoadingPosts] = useState(false);
-  const [errorPosts, setErrorPosts] = useState<string | null>(null);
   const account = useAccount({
     address: authUser?.address ?? "",
     suspense: true,
   });
 
-  const { execute, loading, data: postData } = useCreatePost(
+  const { execute, loading } = useCreatePost(
     handleOperationWith(walletClient)
   );
 
   const [newPost, setNewPost] = useState("");
-  const [userPosts, setUserPosts] = useState([]);
+  const [userPosts, setUserPosts] = useState<PostForYou[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [errorPosts, setErrorPosts] = useState<string | null>(null);
 
   const userDisplayName =
     account.data?.username?.value ??
@@ -50,8 +51,8 @@ export function App() {
           setErrorPosts(result.error.message);
           console.error("Failed to fetch posts:", result.error);
           setUserPosts([]);
-        } else {
-          setUserPosts(result.value.items);
+        } else if (!result.isErr() && result.value?.items) {
+          setUserPosts([...result.value.items]); // spread to convert readonly to mutable
         }
       } catch (err) {
         setErrorPosts("Unexpected error fetching posts");
@@ -64,7 +65,6 @@ export function App() {
 
     loadUserPosts();
   }, [authUser?.address]);
-
 
   const handleCreatePost = async () => {
     if (!newPost.trim()) return;
@@ -81,7 +81,6 @@ export function App() {
     }
 
     alert("✅ Post published on Lens!");
-    console.log(result)
     setNewPost("");
 
     // Refresh posts after successful post creation
@@ -90,8 +89,8 @@ export function App() {
         account: evmAddress(authUser.address),
         shuffle: false,
       });
-      if (!refreshed.isErr()) {
-        setUserPosts(refreshed.value.items);
+      if (!refreshed.isErr() && refreshed.value && refreshed.value.items) {
+        setUserPosts([...refreshed.value.items]); // spread to convert readonly to mutable
       }
     }
   };
@@ -103,9 +102,9 @@ export function App() {
           {authUser ? `Welcome, ${userDisplayName}` : "📝 Lens Dark Forum"}
         </h1>
         {authUser ? (
-          <LogoutButton className="bg-white text-indigo-600 font-semibold px-6 py-2 rounded shadow hover:bg-gray-100 transition" />
+          <LogoutButton />
         ) : (
-          <LoginForm className="bg-white text-indigo-600 font-semibold px-6 py-2 rounded shadow hover:bg-gray-100 transition" />
+          <LoginForm />
         )}
       </header>
 
@@ -135,16 +134,22 @@ export function App() {
 
           <section style={styles.postsSection}>
             <h2 style={styles.postsTitle}>Your Lens Posts</h2>
-            {userPosts.length === 0 ? (
+
+            {loadingPosts && <p style={styles.infoText}>Loading posts...</p>}
+            {errorPosts && <p style={{ ...styles.infoText, color: "red" }}>{errorPosts}</p>}
+
+            {!loadingPosts && !errorPosts && userPosts.length === 0 && (
               <p style={styles.infoText}>No posts yet. Be the first!</p>
-            ) : (
+            )}
+
+            {!loadingPosts && !errorPosts && userPosts.length > 0 && (
               <ul style={styles.postsList}>
-                {userPosts.map((post) => (
+                {userPosts.map(({ post }) => (
                   <li key={post.id} style={styles.post}>
                     <div style={styles.postHeader}>
                       <strong style={styles.postAuthor}>{userDisplayName}</strong>
                       <time style={styles.postDate}>
-                        {new Date(post.createdAt).toLocaleString()}
+                        {new Date(post.timestamp).toLocaleString()}
                       </time>
                     </div>
                     <p style={styles.postContent}>
@@ -161,9 +166,8 @@ export function App() {
   );
 }
 
-
-// Dark theme styles (unchanged)
-const styles = {
+// Dark theme styles with correct CSS typings
+const styles: { [key: string]: React.CSSProperties } = {
   container: {
     maxWidth: 700,
     margin: "50px auto",
